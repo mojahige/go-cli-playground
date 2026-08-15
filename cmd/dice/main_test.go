@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -29,13 +30,14 @@ func TestRoll(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	var buf bytes.Buffer
+	in := strings.NewReader("\n\n\n") // Enter 3回
 	intn := func(n int) int { return 2 }
 
-	if err := run(&buf, intn); err != nil {
+	if err := run(in, &buf, intn); err != nil {
 		t.Fatalf("run() returned error: %v", err)
 	}
 
-	want := "3\n"
+	want := prompt + "\n3\n3\n3\n"
 	if got := buf.String(); got != want {
 		t.Errorf("run() output = %q, want %q", got, want)
 	}
