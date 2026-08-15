@@ -28,6 +28,14 @@ func TestRoll(t *testing.T) {
 	}
 }
 
+func TestFaces(t *testing.T) {
+	for n := 1; n <= 6; n++ {
+		if got := strings.Count(faces[n], "●"); got != n {
+			t.Errorf("faces[%d] の目の数 = %d, want %d", n, got, n)
+		}
+	}
+}
+
 func TestRun(t *testing.T) {
 	var buf bytes.Buffer
 	in := strings.NewReader("\n\n\n") // Enter 3回
@@ -37,7 +45,7 @@ func TestRun(t *testing.T) {
 		t.Fatalf("run() returned error: %v", err)
 	}
 
-	want := prompt + "\n3\n3\n3\n"
+	want := prompt + "\n" + strings.Repeat(clearScreen+prompt+"\n"+faces[3]+"\n", 3)
 	if got := buf.String(); got != want {
 		t.Errorf("run() output = %q, want %q", got, want)
 	}
