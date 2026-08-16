@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -309,7 +311,8 @@ func TestFormatTodos(t *testing.T) {
 			todos: []Todo{{ID: 1, Title: "あ"}, {ID: 2, Title: "い", Done: true}},
 			want:  "[ ] 1 あ\n[x] 2 い",
 		},
-		{name: "空", todos: nil, want: "TODO なし"},
+		{name: "nil", todos: nil, want: "TODO なし"},
+		{name: "空スライス", todos: []Todo{}, want: "TODO なし"},
 	}
 
 	for _, tt := range tests {
@@ -317,26 +320,92 @@ func TestFormatTodos(t *testing.T) {
 			got := formatTodos(tt.todos)
 
 			if got != tt.want {
-				t.Errorf("formatTodos() = %s, want %s", got, tt.want)
+				t.Errorf("formatTodos() = %q, want %q", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestFormatTodosEmpty(t *testing.T) {
-	got := formatTodos([]Todo{})
-	want := "TODO なし"
+func TestRun(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "todos.json")
 
-	if got != want {
-		t.Errorf("formatTodos() = %s, want %s", got, want)
+	var buf bytes.Buffer
+	if err := run([]string{"add", "テスト"}, &buf, path); err != nil {
+		t.Fatalf("run(add) error = %v", err)
+	}
+
+	buf.Reset()
+	if err := run([]string{"list"}, &buf, path); err != nil {
+		t.Fatalf("run(list) error = %v", err)
+	}
+
+	want := "[ ] 1 テスト\n"
+	if got := buf.String(); got != want {
+		t.Errorf("run(list) = %q, want %q", got, want)
+	}
+
+	if err := run([]string{"complete", "1"}, &buf, path); err != nil {
+		t.Fatalf("run(complete) error = %v", err)
+	}
+
+	buf.Reset()
+	if err := run([]string{"list"}, &buf, path); err != nil {
+		t.Fatalf("run(list) error = %v", err)
+	}
+
+	want = "[x] 1 テスト\n"
+	if got := buf.String(); got != want {
+		t.Errorf("run(list) = %q, want %q", got, want)
+	}
+
+	if err := run([]string{"remove", "1"}, &buf, path); err != nil {
+		t.Fatalf("run(remove) error = %v", err)
+	}
+
+	buf.Reset()
+	if err := run([]string{"list"}, &buf, path); err != nil {
+		t.Fatalf("run(list) error = %v", err)
+	}
+
+	want = "TODO なし\n"
+	if got := buf.String(); got != want {
+		t.Errorf("run(list) = %q, want %q", got, want)
 	}
 }
 
-func TestFormatTodosNil(t *testing.T) {
-	got := formatTodos(nil)
-	want := "TODO なし"
+func TestRunErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "引数なし", args: []string{}},
+		{name: "不明なコマンド", args: []string{"foo"}},
+		{name: "add にタイトルなし", args: []string{"add"}},
+		{name: "id が数字じゃない", args: []string{"remove", "abc"}},
+		{name: "存在しない id", args: []string{"complete", "99"}},
+	}
 
-	if got != want {
-		t.Errorf("formatTodos() = %s, want %s", got, want)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "todos.json")
+			var buf bytes.Buffer
+
+			if err := run(tt.args, &buf, path); err == nil {
+				t.Error("run() = nil, want error")
+			}
+		})
+	}
+}
+
+func TestRunListDoesNotSave(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "todos.json")
+	var buf bytes.Buffer
+
+	if err := run([]string{"list"}, &buf, path); err != nil {
+		t.Fatalf("run(list) error = %v", err)
+	}
+
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Error("list がファイルを作ってしまっている")
 	}
 }

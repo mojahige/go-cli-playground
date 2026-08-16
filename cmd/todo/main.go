@@ -24,7 +24,7 @@ func find(todos []Todo, id int) (int, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("id %d のタスクが無いのだ", id)
+	return 0, fmt.Errorf("id %d のタスク無し", id)
 }
 
 func nextID(todos []Todo) int {
