@@ -69,6 +69,18 @@ func complete(todos []Todo, id int) ([]Todo, error) {
 	return todos, nil
 }
 
+func reopen(todos []Todo, id int) ([]Todo, error) {
+	i, err := find(todos, id)
+
+	if err != nil {
+		return todos, err
+	}
+
+	todos[i].Done = false
+
+	return todos, nil
+}
+
 func save(path string, todos []Todo) error {
 	if todos == nil {
 		todos = []Todo{}
@@ -166,6 +178,20 @@ func run(args []string, w io.Writer, path string) error {
 		}
 
 		todos, err = complete(todos, id)
+		if err != nil {
+			return err
+		}
+	case "reopen":
+		if len(args) < 2 {
+			return errors.New("使い方: todo reopen <id>")
+		}
+
+		id, err := strconv.Atoi(args[1])
+		if err != nil {
+			return err
+		}
+
+		todos, err = reopen(todos, id)
 		if err != nil {
 			return err
 		}

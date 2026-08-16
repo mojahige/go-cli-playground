@@ -167,6 +167,40 @@ func TestComplete(t *testing.T) {
 	}
 }
 
+func TestReopen(t *testing.T) {
+	tests := []struct {
+		name    string
+		todos   []Todo
+		id      int
+		want    []Todo
+		wantErr bool
+	}{
+		{name: "先頭を未完了", todos: []Todo{{ID: 1, Done: true}, {ID: 2}, {ID: 3}}, id: 1, want: []Todo{{ID: 1}, {ID: 2}, {ID: 3}}},
+		{name: "末尾を未完了", todos: []Todo{{ID: 1}, {ID: 2}, {ID: 3, Done: true}}, id: 3, want: []Todo{{ID: 1}, {ID: 2}, {ID: 3}}},
+		{name: "間を未完了", todos: []Todo{{ID: 1}, {ID: 2, Done: true}, {ID: 3}}, id: 2, want: []Todo{{ID: 1}, {ID: 2}, {ID: 3}}},
+		{name: "存在しない", todos: []Todo{{ID: 1}}, id: 99, wantErr: true},
+		{name: "空", todos: nil, id: 1, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := reopen(tt.todos, tt.id)
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("reopen() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr {
+				return
+			}
+
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("complete() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSave(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "todos.json")
 
@@ -354,6 +388,20 @@ func TestRun(t *testing.T) {
 	}
 
 	want = "[x] 1 テスト\n"
+	if got := buf.String(); got != want {
+		t.Errorf("run(list) = %q, want %q", got, want)
+	}
+
+	if err := run([]string{"reopen", "1"}, &buf, path); err != nil {
+		t.Fatalf("run(reopen) error = %v", err)
+	}
+
+	buf.Reset()
+	if err := run([]string{"list"}, &buf, path); err != nil {
+		t.Fatalf("run(list) error = %v", err)
+	}
+
+	want = "[ ] 1 テスト\n"
 	if got := buf.String(); got != want {
 		t.Errorf("run(list) = %q, want %q", got, want)
 	}
