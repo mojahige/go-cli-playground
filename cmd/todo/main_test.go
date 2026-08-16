@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 )
@@ -160,5 +162,128 @@ func TestComplete(t *testing.T) {
 				t.Errorf("complete() = %+v, want %+v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSave(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "todos.json")
+
+	if err := save(path, []Todo{{ID: 1, Title: "アライさん", Done: true}}); err != nil {
+		t.Fatalf("save() error = %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := `[
+  {
+    "id": 1,
+    "title": "アライさん",
+    "done": true
+  }
+]`
+
+	if string(got) != want {
+		t.Errorf("save() の中身 =\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestSaveOverwrite(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "todos.json")
+
+	if err := save(path, []Todo{
+		{ID: 1, Title: "todo 1", Done: true},
+		{ID: 2, Title: "todo 2", Done: true},
+		{ID: 3, Title: "todo 3", Done: true},
+	}); err != nil {
+		t.Fatalf("save() error = %v", err)
+	}
+
+	if err := save(path, []Todo{
+		{ID: 4, Title: "todo 4", Done: true},
+	}); err != nil {
+		t.Fatalf("save() error = %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := `[
+  {
+    "id": 4,
+    "title": "todo 4",
+    "done": true
+  }
+]`
+
+	if string(got) != want {
+		t.Errorf("save() の中身 =\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestSaveNil(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "todos.json")
+
+	if err := save(path, nil); err != nil {
+		t.Fatalf("save() error = %v, want nil", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := `[]`
+
+	if string(got) != want {
+		t.Errorf("save() の中身 =\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestLoad(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "todos.json")
+	want := []Todo{{ID: 1, Title: "todo 1"}, {ID: 2, Title: "todo 2"}, {ID: 3, Title: "todo 3"}}
+
+	if err := save(path, want); err != nil {
+		t.Fatalf("save() error = %v, want nil", err)
+	}
+
+	got, err := load(path)
+	if err != nil {
+		t.Fatalf("load() error = %v", err)
+	}
+
+	if !slices.Equal(got, want) {
+		t.Errorf("load() = %+v, want %+v", got, want)
+	}
+}
+
+func TestLoadNotExist(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "not-exist.json")
+
+	todos, err := load(path)
+
+	if err != nil {
+		t.Fatalf("load() error = %v, want nil", err)
+	}
+
+	if todos != nil {
+		t.Errorf("load() = %+v, want nil", todos)
+	}
+}
+
+func TestLoadBroken(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "broken.json")
+
+	if err := os.WriteFile(path, []byte("{💣"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := load(path); err == nil {
+		t.Error("load() = nil, want error")
 	}
 }

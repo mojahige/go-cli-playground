@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"slices"
 )
 
@@ -59,6 +62,37 @@ func complete(todos []Todo, id int) ([]Todo, error) {
 	}
 
 	todos[i].Done = true
+
+	return todos, nil
+}
+
+func save(path string, todos []Todo) error {
+	if todos == nil {
+		todos = []Todo{}
+	}
+
+	data, err := json.MarshalIndent(todos, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0o644)
+}
+
+func load(path string) ([]Todo, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var todos []Todo
+	if err := json.Unmarshal(data, &todos); err != nil {
+		return nil, err
+	}
 
 	return todos, nil
 }
