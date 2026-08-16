@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
+	"strconv"
+	"strings"
 )
 
 type Todo struct {
@@ -95,4 +98,87 @@ func load(path string) ([]Todo, error) {
 	}
 
 	return todos, nil
+}
+
+func formatTodos(todos []Todo) string {
+	if len(todos) == 0 {
+		return "TODO なし"
+	}
+
+	lines := make([]string, 0, len(todos))
+
+	for _, todo := range todos {
+		done := " "
+		if todo.Done {
+			done = "x"
+		}
+
+		lines = append(lines, fmt.Sprintf("[%s] %d %s", done, todo.ID, todo.Title))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func run(args []string, w io.Writer, path string) error {
+	if len(args) == 0 {
+		return errors.New("使い方: todo <list|add|remove|complete> ...")
+	}
+
+	todos, err := load(path)
+
+	if err != nil {
+		return err
+	}
+
+	switch args[0] {
+	case "list":
+		fmt.Fprintln(w, formatTodos(todos))
+
+		return nil
+	case "add":
+		if len(args) < 2 {
+			return errors.New("使い方: todo add <title>")
+		}
+
+		todos = add(todos, args[1])
+	case "remove":
+		if len(args) < 2 {
+			return errors.New("使い方: todo remove <id>")
+		}
+
+		id, err := strconv.Atoi(args[1])
+		if err != nil {
+			return err
+		}
+
+		todos, err = remove(todos, id)
+		if err != nil {
+			return err
+		}
+	case "complete":
+		if len(args) < 2 {
+			return errors.New("使い方: todo complete <id>")
+		}
+
+		id, err := strconv.Atoi(args[1])
+		if err != nil {
+			return err
+		}
+
+		todos, err = complete(todos, id)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("unknown command: " + args[0])
+	}
+
+	return save(path, todos)
+}
+
+func main() {
+	if err := run(os.Args[1:], os.Stdout, "./todos.json"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

@@ -287,3 +287,56 @@ func TestLoadBroken(t *testing.T) {
 		t.Error("load() = nil, want error")
 	}
 }
+
+func TestFormatTodos(t *testing.T) {
+	tests := []struct {
+		name  string
+		todos []Todo
+		want  string
+	}{
+		{
+			name:  "完了",
+			todos: []Todo{{ID: 1, Title: "あ", Done: true}},
+			want:  "[x] 1 あ",
+		},
+		{
+			name:  "未完了",
+			todos: []Todo{{ID: 1, Title: "あ"}},
+			want:  "[ ] 1 あ",
+		},
+		{
+			name:  "完了済み混在",
+			todos: []Todo{{ID: 1, Title: "あ"}, {ID: 2, Title: "い", Done: true}},
+			want:  "[ ] 1 あ\n[x] 2 い",
+		},
+		{name: "空", todos: nil, want: "TODO なし"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatTodos(tt.todos)
+
+			if got != tt.want {
+				t.Errorf("formatTodos() = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatTodosEmpty(t *testing.T) {
+	got := formatTodos([]Todo{})
+	want := "TODO なし"
+
+	if got != want {
+		t.Errorf("formatTodos() = %s, want %s", got, want)
+	}
+}
+
+func TestFormatTodosNil(t *testing.T) {
+	got := formatTodos(nil)
+	want := "TODO なし"
+
+	if got != want {
+		t.Errorf("formatTodos() = %s, want %s", got, want)
+	}
+}
